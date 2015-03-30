@@ -126,8 +126,16 @@ module.exports = function(source) {
 
   // GET /:resource/:id
   function show(req, res, next) {
-    var resource = db(req.params.resource)
-      .get(+req.params.id)
+    var resource;
+
+    if (isNaN(+req.params.id)) {
+      resource = db(req.params.resource)
+        .find({slug: req.params.id});
+    }
+    else {
+      resource = db(req.params.resource)
+        .get(+req.params.id);
+    }
 
     if (resource) {
       res.jsonp(resource)
@@ -152,22 +160,52 @@ module.exports = function(source) {
   // PATCH /:resource/:id
   function update(req, res, next) {
     for (var key in req.body) {
-      req.body[key] = utils.toNative(req.body[key])
+      req.body[key] = utils.toNative(req.body[key]);
     }
 
-    var resource = db(req.params.resource)
-      .update(+req.params.id, req.body)
+    // Find id
+    var resource;
+    var resource_id = +req.params.id;
+    if (isNaN(resource_id)) {
+      resource = db(req.params.resource)
+        .find({slug: req.params.id});
+
+      if (resource) {
+        resource_id = resource.id;
+      }
+      else {
+        res.status(404).jsonp({});
+      }
+    }
+
+    resource = db(req.params.resource)
+      .update(resource_id, req.body);
 
     if (resource) {
-      res.jsonp(resource)
+      res.jsonp(resource);
     } else {
-      res.status(404).jsonp({})
+      res.status(404).jsonp({});
     }
   }
 
   // DELETE /:resource/:id
   function destroy(req, res, next) {
-    db(req.params.resource).remove(+req.params.id)
+    // Find id
+    var resource;
+    var resource_id = +req.params.id;
+    if (isNaN(resource_id)) {
+      resource = db(req.params.resource)
+        .find({slug: req.params.id});
+
+      if (resource) {
+        resource_id = resource.id;
+      }
+      else {
+        res.status(404).jsonp({});
+      }
+    }
+
+    db(req.params.resource).remove(resource_id)
 
     // Remove dependents documents
     var removable = utils.getRemovable(db.object)
